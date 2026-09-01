@@ -1,0 +1,2 @@
+# Copy to .dev.vars for local dev; set the same values with `wrangler secret put` for production.
+GEMINI_API_KEY=your-gemini-key

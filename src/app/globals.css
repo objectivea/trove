@@ -1,0 +1,171 @@
+/* Trove — white ground, black text, monospace.
+   Every value here comes off the approved mockups. */
+
+:root {
+  --paper: #ffffff;
+  --ink: #111110;
+  --mid: #767370;
+  --rule: #d9d6d0;
+  --signal: #e5231b;
+  --tile: #e8e5e0;
+
+  --mono: "Space Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+  --disp: Archivo, "Helvetica Neue", Arial, sans-serif;
+}
+
+* { box-sizing: border-box; }
+
+html, body {
+  margin: 0;
+  padding: 0;
+  background: var(--paper);
+  color: var(--ink);
+  font-family: var(--mono);
+  font-size: 12px;
+  -webkit-font-smoothing: antialiased;
+}
+
+a { color: var(--ink); text-decoration: none; }
+a:hover { color: var(--signal); }
+button { font: inherit; color: inherit; }
+
+/* ---- type roles ---- */
+.disp {
+  font-family: var(--disp);
+  font-weight: 800;
+  text-transform: uppercase;
+  line-height: .95;
+  letter-spacing: -.005em;
+  text-wrap: balance;
+}
+.lbl {
+  font-size: 10px;
+  letter-spacing: .14em;
+  text-transform: uppercase;
+  color: var(--mid);
+}
+.lbl.ink { color: var(--ink); }
+.nav { font-size: 12px; letter-spacing: .04em; }
+.fn { font-size: 9px; letter-spacing: .03em; color: var(--mid); margin-top: 6px; }
+.ul { text-decoration: underline; text-underline-offset: 3px; }
+
+/* ---- the dotted leader that runs through the whole product ---- */
+.leader { display: flex; align-items: baseline; gap: 10px; }
+.leader .dash { flex-grow: 1; border-bottom: 1px dashed var(--ink); transform: translateY(-4px); }
+.leader .dot { flex-grow: 1; border-bottom: 1px dotted var(--mid); transform: translateY(-4px); }
+
+/* ---- bracketed label, which replaces every chip and pill ---- */
+.brk {
+  font-size: 11px;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  color: var(--mid);
+  background: none;
+  border: 0;
+  padding: 0;
+  cursor: pointer;
+}
+.brk:hover { color: var(--ink); }
+.brk[aria-pressed="true"], .brk.on { color: var(--ink); font-weight: 700; }
+
+.btn {
+  display: inline-block;
+  padding: 8px 13px;
+  border: 1px solid var(--ink);
+  background: var(--paper);
+  color: var(--ink);
+  font-size: 11px;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  cursor: pointer;
+}
+.btn:hover { background: var(--ink); color: var(--paper); }
+.btn.k { background: var(--ink); color: var(--paper); }
+.btn.k:hover { background: var(--paper); color: var(--ink); }
+.btn:disabled { opacity: .35; cursor: default; }
+.btn:disabled:hover { background: var(--paper); color: var(--ink); }
+
+:focus-visible { outline: 2px solid var(--signal); outline-offset: 2px; }
+
+/* ---- status ticker: the one place the app reports on itself ---- */
+.ticker {
+  display: flex;
+  align-items: center;
+  gap: 28px;
+  height: 30px;
+  padding: 0 14px;
+  background: var(--signal);
+  color: #fff;
+  font-size: 10px;
+  letter-spacing: .14em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  overflow: hidden;
+}
+.ticker .sp { flex-grow: 1; }
+
+/* ---- chrome ---- */
+.shell { padding: 34px 40px 0; }
+.rule { border-top: 1px solid var(--ink); margin-top: 16px; }
+.navrow { display: flex; align-items: baseline; gap: 30px; flex-wrap: wrap; }
+
+/* ---- images: hard edges, no radius, no shadow ---- */
+.t {
+  position: relative;
+  overflow: hidden;
+  background-color: var(--tile);
+  background-size: cover;
+  background-position: center;
+  display: block;
+}
+.t.ph::after {
+  content: "held";
+  position: absolute;
+  inset: auto 0 0 0;
+  padding: 4px 6px;
+  font-size: 9px;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+  color: var(--mid);
+  border-top: 1px dashed var(--rule);
+  background: var(--paper);
+}
+
+.masonry { columns: 5; column-gap: 24px; }
+@media (max-width: 1280px) { .masonry { columns: 4; } }
+@media (max-width: 980px)  { .masonry { columns: 3; } }
+@media (max-width: 680px)  { .masonry { columns: 2; } }
+.cell { break-inside: avoid; margin-bottom: 26px; }
+
+.field {
+  width: 100%;
+  padding: 11px 13px;
+  border: 1px solid var(--ink);
+  background: var(--paper);
+  color: var(--ink);
+  font-family: var(--mono);
+  font-size: 12px;
+}
+.field::placeholder { color: var(--mid); }
+
+.crop { position: absolute; width: 11px; height: 11px; }
+.crop.tl { left: 16px; top: 16px; border-left: 1px solid var(--ink); border-top: 1px solid var(--ink); }
+.crop.tr { right: 16px; top: 16px; border-right: 1px solid var(--ink); border-top: 1px solid var(--ink); }
+
+.dropzone {
+  border: 1px dashed var(--ink);
+  padding: 26px 28px;
+  display: flex;
+  align-items: center;
+  gap: 26px;
+  flex-wrap: wrap;
+}
+.dropzone.hot { background: #faf7f2; border-color: var(--signal); }
+
+table.rows { width: 100%; border-collapse: collapse; }
+table.rows td { padding: 15px 0; border-bottom: 1px solid var(--rule); vertical-align: middle; }
+
+@media (prefers-reduced-motion: reduce) {
+  * { transition-duration: 1ms !important; animation-duration: 1ms !important; }
+}
