@@ -5,9 +5,9 @@ import { env } from "./env";
  * Override per-deployment with wrangler vars if you want a different tier.
  */
 export const MODELS = {
-  vision: "gemini-2.5-flash",
-  research: "gemini-2.5-flash",
-  image: "gemini-2.5-flash-image",
+  vision: "gemini-3.7-flash",
+  research: "gemini-3.7-flash",
+  image: "gemini-3.1-flash-image",
 };
 
 const API = "https://generativelanguage.googleapis.com/v1beta/models";
@@ -86,6 +86,46 @@ export async function enrichImage(base64: string, mime: string): Promise<Enrichm
   };
 }
 
+/**
+ * The model returns sources as bare URL strings about as often as it returns
+ * {label,url} objects, and it invents confidence words ("confident",
+ * "very likely") outside the enum. Both are normalised here rather than
+ * silently dropped.
+ */
+function normaliseSources(raw: unknown): { label: string; url?: string }[] {
+  if (!Array.isArray(raw)) return [];
+  return raw
+    .map((s) => {
+      if (typeof s === "string") {
+        const url = s.trim();
+        if (!url) return null;
+        const label = url.replace(/^https?:\/\//, "").replace(/\/$/, "").slice(0, 80);
+        return { label, url: /^https?:\/\//.test(url) ? url : undefined };
+      }
+      if (s && typeof s === "object") {
+        const o = s as { label?: unknown; title?: unknown; url?: unknown; uri?: unknown };
+        const url = typeof o.url === "string" ? o.url : typeof o.uri === "string" ? o.uri : undefined;
+        const label = typeof o.label === "string" ? o.label
+          : typeof o.title === "string" ? o.title
+          : url?.replace(/^https?:\/\//, "").slice(0, 80);
+        return label ? { label, url } : null;
+      }
+      return null;
+    })
+    .filter(Boolean) as { label: string; url?: string }[];
+}
+
+type Confidence = "high" | "medium" | "low" | "unidentified";
+
+function normaliseConfidence(raw: unknown, hasFacts: boolean): Confidence {
+  const v = String(raw ?? "").toLowerCase();
+  if (/^(high|confident|certain|very likely|strong)/.test(v)) return "high";
+  if (/^(medium|moderate|likely|probable)/.test(v)) return "medium";
+  if (/^(low|weak|tentative|possible|unsure)/.test(v)) return "low";
+  if (/unidentified|unknown|none/.test(v)) return "unidentified";
+  return hasFacts ? "medium" : "unidentified";
+}
+
 export type Identification = {
   title: string | null;
   maker: string | null;
@@ -129,12 +169,11 @@ reasoning  — one sentence on how you concluded it, or what the style suggests 
     generationConfig: { temperature: 0.1 },
   });
 
-  const out = parseJson<Identification>(firstText(payload), {
-    title: null, maker: null, place: null, year: null,
-    confidence: "unidentified", sources: [], reasoning: "",
-  });
+  const raw = parseJson<Record<string, unknown>>(firstText(payload), {});
 
-  // fold in whatever the grounding metadata cited, so the footnotes are real links
+  // grounding metadata carries real citations when it is present, but the API
+  // frequently omits it even on a grounded answer — so it supplements the
+  // model's own list rather than replacing it
   const chunks = payload?.candidates?.[0]?.groundingMetadata?.groundingChunks ?? [];
   const grounded = chunks
     .map((c: any) => c?.web)
@@ -142,11 +181,20 @@ reasoning  — one sentence on how you concluded it, or what the style suggests 
     .map((w: any) => ({ label: String(w.title ?? w.uri), url: String(w.uri) }));
 
   const seen = new Set<string>();
-  const sources = [...(out.sources ?? []), ...grounded]
-    .filter((s) => s && s.label && !seen.has(s.label) && seen.add(s.label))
+  const sources = [...normaliseSources(raw.sources), ...grounded]
+    .filter((s) => !seen.has(s.label) && seen.add(s.label))
     .slice(0, 4);
 
-  return { ...out, sources };
+  const str = (v: unknown) => (typeof v === "string" && v.trim() ? v.trim() : null);
+  const title = str(raw.title), maker = str(raw.maker), place = str(raw.place);
+  const year = raw.year == null ? null : String(raw.year);
+
+  return {
+    title, maker, place, year,
+    confidence: normaliseConfidence(raw.confidence, Boolean(maker || title)),
+    sources,
+    reasoning: str(raw.reasoning) ?? "",
+  };
 }
 
 export type BoardDNA = {
@@ -190,6 +238,7 @@ export async function generateConcept(input: {
   narrative: string;
   palette: string[];
   references: { base64: string; mime: string }[];
+  aspectRatio?: string;
 }): Promise<{ base64: string; mime: string; prompt: string } | null> {
   const prompt = `Generate a single photographic concept image: ${input.slot}.
 
@@ -207,7 +256,12 @@ No text, no logos, no watermarks. Photographic, not illustrative.`;
 
   const payload = await call(MODELS.image, {
     contents: [{ role: "user", parts }],
-    generationConfig: { responseModalities: ["IMAGE"] },
+    generationConfig: {
+      responseModalities: ["IMAGE"],
+      // without this the output silently inherits the reference images' shape,
+      // so a portrait screenshot yields a portrait room set
+      imageConfig: { aspectRatio: input.aspectRatio ?? "4:3" },
+    },
   });
 
   const out = (payload?.candidates?.[0]?.content?.parts ?? [])

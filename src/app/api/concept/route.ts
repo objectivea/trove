@@ -51,8 +51,9 @@ export async function POST(req: Request) {
     if (!out) continue;
 
     const id = newId();
-    const filename = `CONCEPT_0${i + 1}_${slot.replace(/\s+/g, "")}.png`;
-    const key = `concept/${id}.png`;
+    const ext = out.mime.includes("png") ? "png" : out.mime.includes("webp") ? "webp" : "jpg";
+    const filename = `CONCEPT_0${i + 1}_${slot.replace(/\s+/g, "")}.${ext}`;
+    const key = `concept/${id}.${ext}`;
     await putMedia(key, fromBase64(out.base64), out.mime);
 
     await DB.prepare(
