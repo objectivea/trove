@@ -89,6 +89,30 @@ paths are implemented:
   saves, the caption for ~99%, and hashtags for ~64%. That means a save is
   searchable and identifiable from the moment it lands, with no API call at all.
 
+### Where the pictures come from
+
+The export contains **no images at all** — verified against a real 2,334-save
+export: every `media` array is empty, and there is not one CDN URL in the file.
+Instagram only ever includes your *own* media, and saved posts are other
+people's. Pictures therefore have to be fetched from Instagram after import.
+
+Two routes are implemented, tried in order per post (`src/lib/instagram.ts`):
+
+1. **oEmbed** — the documented, tokenless endpoint. ~640px thumbnail, no app
+   review needed. Fails on private and deleted posts.
+2. **The public embed page** — `instagram.com/p/<code>/embed/captioned/`, parsed
+   for the image URL. Often larger than the oEmbed thumbnail, and works when
+   oEmbed throttles.
+
+Run the backfill with `node scripts/backfill-images.mjs`. It is resumable and
+polite: small batches, a delay with jitter between posts, failures marked
+`held_failed` so they can be retried separately with `--retry-failed`. A record
+that never resolves keeps its caption, account and collection, and stays
+searchable.
+
+CDN URLs are signed and short-lived, so images are downloaded during the same
+request and stored in R2 rather than hot-linked.
+
 - **oEmbed recovery** supplies the thumbnail, and only the thumbnail. It is
   best-effort: posts from private or deleted accounts will not resolve and are
   stored with status `held` — still searchable by caption, account and
