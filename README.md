@@ -22,34 +22,64 @@ filename, because a reference library is an archive of files.
 
 ## Setup
 
+### Run it locally
+
+Nothing needs to exist in Cloudflare for this. Wrangler simulates D1 and R2 on
+disk, so a local library works offline.
+
 ```bash
 npm install
+npm run db:local
+```
 
-# 1. Create the Cloudflare resources
-npx wrangler d1 create trove-db          # paste the id into wrangler.jsonc
-npx wrangler r2 bucket create trove-media
-npx wrangler vectorize create trove-refs --dimensions=512 --metric=cosine
-npx wrangler vectorize create-metadata-index trove-refs --property-name=ref --type=string
+Add your Gemini key (only needed for tagging, identification and concepts):
 
-# 2. Apply the schema
-npm run db:local      # local dev
-npm run db:remote     # production
+```bash
+cp .dev.vars.example .dev.vars
+```
 
-# 3. Add your Gemini key
-cp .dev.vars.example .dev.vars            # local
-npx wrangler secret put GEMINI_API_KEY    # production
+Then, in one terminal:
 
+```bash
 npm run dev
 ```
 
-Deploy with `npm run deploy`.
+Open http://localhost:3000/import, choose **Instagram export**, and select your
+`saved_posts.json` and `saved_collections.json` together (or the whole ZIP).
+Untick *Try to recover thumbnails* — the import finishes far faster, and the
+backfill below does a better job of it.
+
+Once the import has finished, in a second terminal:
+
+```bash
+node scripts/backfill-images.mjs
+```
+
+### Deploy it
+
+R2 has to be switched on once in the Cloudflare dashboard before a bucket can be
+created (Cloudflare returns `code: 10042` until you do). Then:
+
+```bash
+npx wrangler d1 create trove-db
+```
+
+Paste the returned id into `wrangler.jsonc`, then:
+
+```bash
+npx wrangler r2 bucket create trove-media
+npx wrangler vectorize create trove-refs --dimensions=512 --metric=cosine
+npx wrangler vectorize create-metadata-index trove-refs --property-name=ref --type=string
+npm run db:remote
+npx wrangler secret put GEMINI_API_KEY
+npm run deploy
+```
 
 **Vectorize dimensions.** The index is created at 512 to match
 `@cf/openai/clip-vit-base-patch32`, which powers image similarity. Vibe search
 uses a text model at 768 dimensions, so it needs a second index before it can
 run on embeddings — until then it falls back to full-text search, which already
-covers everything the AI wrote. Image similarity is the feature the product
-leans on, so it takes the single index.
+covers everything the AI wrote.
 
 ## How the AI layer works
 
