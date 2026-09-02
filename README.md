@@ -78,12 +78,27 @@ light and materials instead of a generic reading of the words.
 There is no API for saved posts — not for us, not for anyone. Two legitimate
 paths are implemented:
 
-- **Bulk import** of the official "Download your information" export. The ZIP is
-  unpacked in the browser and never uploaded; only post URLs and collection names
-  are sent on, and your folder names survive as Trove collections.
-- **oEmbed recovery** for each post. Tokenless for public posts since June 2026,
-  so no Meta app review. Posts from private or deleted accounts cannot be fetched
-  and are kept as records, clearly marked, rather than silently dropped.
+- **Bulk import** of the official "Download your information" export, parsed by
+  `src/lib/instagram-export.ts` and verified against a real 2,334-post export.
+  The ZIP is unpacked in the browser and never uploaded; loose `saved_posts.json`
+  and `saved_collections.json` are accepted too. Collection membership lives in a
+  nested `Media` block on each collection, not on the posts, and is reassembled
+  on import so your folder names survive.
+
+  The export is richer than it looks: it carries the account handle for ~100% of
+  saves, the caption for ~99%, and hashtags for ~64%. That means a save is
+  searchable and identifiable from the moment it lands, with no API call at all.
+
+- **oEmbed recovery** supplies the thumbnail, and only the thumbnail. It is
+  best-effort: posts from private or deleted accounts will not resolve and are
+  stored with status `held` — still searchable by caption, account and
+  collection, rather than silently dropped. Import can be run with thumbnail
+  fetching off entirely.
+
+  **Unverified:** oEmbed itself has not been exercised against live Instagram —
+  the network in the environment this was built in blocks Meta's hosts. The
+  parser, the database writes and search are all verified against real data;
+  thumbnail recovery is the one step still to be proven.
 
 ## Layout
 
