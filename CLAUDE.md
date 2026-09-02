@@ -4,6 +4,35 @@ A visual reference library. Instagram saves and uploads come in, the AI files
 them, boards turn into client directions, and the Concept Studio generates
 imagery in a board's own visual language.
 
+## Start here
+
+Picking this up on a local machine after it was built in Claude Code on the web.
+The cloud environment blocked every Meta host, so image recovery could never be
+tested there — that is the whole reason this moved to a desktop.
+
+**First session, in order:**
+
+1. `npm install`
+2. `npm run db:local`
+3. `cp .dev.vars.example .dev.vars` and paste a Gemini key in
+   (the key used during the build has been rotated — get a fresh one)
+4. `npm run dev`
+5. Open http://localhost:3000/import → **Instagram export** → select
+   `saved_posts.json` and `saved_collections.json` together. Untick
+   *Try to recover thumbnails*. Expect ~2,334 saves across 10 collections.
+6. In a second terminal: `node scripts/backfill-images.mjs`
+
+Step 6 is the unknown. It fetches each saved post's picture, trying the
+documented oEmbed endpoint first and the public embed page second. Nobody has
+seen it run. Watch the recovery rate: if `held_failed` climbs fast, the embed
+page markup has probably shifted and the patterns in
+`src/lib/instagram.ts → fetchEmbedImage()` need updating. Instagram throttles,
+so slowing down (`--delay 2000`) is the first thing to try; waiting an hour is
+the second.
+
+Nothing needs to exist in Cloudflare for any of this. Wrangler simulates D1 and
+R2 on disk.
+
 ## Where the project stands
 
 Built and pushed; never yet run against real Cloudflare or with images present.
